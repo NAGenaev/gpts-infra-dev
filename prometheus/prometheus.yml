@@ -1,0 +1,26 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+##########INFRA##########
+  - job_name: 'kafka'
+    static_configs:
+      - targets: ['kafka-exporter:9308']
+
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+
+
+  - job_name: 'JavaAPI'
+    scheme: https                      # или http, если не используешь TLS
+    static_configs:
+      - targets: ['gpts.local:8443']  # или 8081 если HTTP
+    metrics_path: /actuator/prometheus
+    tls_config:
+      insecure_skip_verify: true     
+  
