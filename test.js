@@ -14,8 +14,8 @@ export const options = {
     transactions: {
       executor: 'per-vu-iterations',
       vus: vus,
-      iterations: totalTransactions / vus, // Теперь 10000 итераций на VU
-      maxDuration: '5m', // Увеличили максимальное время выполнения
+      iterations: totalTransactions / vus, // count итераций/VU
+      maxDuration: '1m', // Увеличили максимальное время выполнения
     },
   },
   thresholds: {
@@ -62,5 +62,6 @@ export default function () {
     console.error(`❌ Ошибка при транзакции: ${res.status} → ${payload}`);
   }
 
+  //sleep(0.5);
   //sleep(0.001);
 }

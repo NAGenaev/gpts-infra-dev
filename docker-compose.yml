@@ -5,13 +5,14 @@ services:
   postgres:
     image: postgres:15
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: transactions
+      POSTGRES_USER: gpts
+      POSTGRES_PASSWORD: gpts
+      POSTGRES_DB: gpts
     ports:
-      - "5433:5432"
+      - "5432:5432"
     volumes:
-      - ./postgres-data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    #  - ./postgres-data:/var/lib/postgresql/data
 
 ######## KAFKA ########
   zookeeper:
@@ -20,21 +21,28 @@ services:
       - "2181:2181"
     environment:
       - ALLOW_ANONYMOUS_LOGIN=yes
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo ruok | nc 127.0.0.1 2181 | grep imok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   kafka:
     image: bitnami/kafka:3.5
     ports:
-      - "9092:9092"
+      - "9092:9092"  # внешний (для приложений на 192.168.0.144)
+      - "9093:9093"  # внутренний (для сервисов в docker-сети)
     depends_on:
       - zookeeper
     environment:
       - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://192.168.0.144:9092
+      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=EXTERNAL:PLAINTEXT,INTERNAL:PLAINTEXT
+      - KAFKA_CFG_LISTENERS=EXTERNAL://:9092,INTERNAL://:9093
+      - KAFKA_CFG_ADVERTISED_LISTENERS=EXTERNAL://192.168.0.144:9092,INTERNAL://kafka:9093
+      - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
       - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
       - KAFKA_BROKER_ID=1
-      - KAFKA_CFG_NUM_PARTITIONS=16
+      - KAFKA_CFG_NUM_PARTITIONS=1
       - KAFKA_CFG_REPLICATION_FACTOR=1
       - KAFKA_CFG_LOG_RETENTION_HOURS=1
     healthcheck:
@@ -43,14 +51,50 @@ services:
       timeout: 10s
       retries: 5
 
+
+######## KAFKA2 ########
+  #zookeeper2:
+  #  image: bitnami/zookeeper:3.8
+  #  ports:
+  #    - "2182:2181"
+  #  environment:
+  #    - ALLOW_ANONYMOUS_LOGIN=yes
+
+  #kafka2:
+  #  image: bitnami/kafka:3.5
+  #  ports:
+  #    - "9093:9093"
+  #  depends_on:
+  #    - zookeeper2
+  #  environment:
+  #    - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper2:2181
+  #    - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT
+  #    - KAFKA_CFG_LISTENERS=PLAINTEXT://:9093
+  #    - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://192.168.0.144:9093
+  #    - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+  #    - KAFKA_BROKER_ID=2
+  #    - KAFKA_CFG_NUM_PARTITIONS=1
+  #    - KAFKA_CFG_REPLICATION_FACTOR=1
+  #    - KAFKA_CFG_LOG_RETENTION_HOURS=1
+  #  healthcheck:
+  #    test: ["CMD", "kafka-topics.sh", "--bootstrap-server", "localhost:9093", "--list"]
+  #    interval: 10s
+  #    timeout: 10s
+  #    retries: 5
+
+
+
 ######## KAFKA-UI ########
   kafka-ui:
     image: provectuslabs/kafka-ui
     environment:
       - KAFKA_CLUSTERS_0_NAME=my-cluster
       - KAFKA_CLUSTERS_0_BOOTSTRAP_SERVERS=kafka:9092  # адрес kafka
-      - KAFKA_SERVER=PLAINTEXT://kafka:9092
-      - KAFKA_PROXY=true
+      #- KAFKA_SERVER=PLAINTEXT://kafka:9092
+      #- KAFKA_PROXY=true
+      #- KAFKA_CLUSTERS_1_NAME=external-kafka
+      #- KAFKA_CLUSTERS_1_BOOTSTRAP_SERVERS=kafka2:9093
+
     ports:
       - "8080:8080"
 
@@ -93,9 +137,20 @@ services:
     ports:
       - "9308:9308"
     environment:
-      KAFKA_URI: kafka:9092
+      KAFKA_URI: kafka:9093
     command:
-      - '--kafka.server=kafka:9092'
+      - '--kafka.server=kafka:9093'
+
+
+  #kafka-exporter2:
+  #  restart: always
+  #  image: danielqsj/kafka-exporter
+  #  ports:
+  #    - "9309:9308"
+  #  environment:
+  #    KAFKA_URI: kafka2:9093
+  #  command:
+  #    - '--kafka.server=kafka2:9093'
 
   postgres-exporter:
     restart: always
@@ -103,36 +158,36 @@ services:
     ports:
       - "9187:9187"
     environment:
-      DATA_SOURCE_NAME: "postgresql://user:password@postgres:5432/transactions?sslmode=disable"
+      DATA_SOURCE_NAME: "postgresql://gpts:gpts@postgres:5432/gpts?sslmode=disable"
 
 
 
-  loki:
-    image: grafana/loki:2.9.0
-    container_name: loki
-    user: "65534"  # Пользователь nobody, от которого работает Loki
-    volumes:
-      - ./loki-config.yaml:/etc/loki/config.yaml
-      - ./loki-data:/loki
-      - ./loki-wal:/wal
-    command: -config.file=/etc/loki/config.yaml
-    ports:
-      - "3100:3100"
-
-  grafana-agent:
-    image: grafana/agent:v0.36.1  # Используем существующий тег
-    container_name: grafana-agent
-    restart: unless-stopped
-    depends_on:
-      loki:
-        condition: service_started
-    volumes:
-      - ./aagent.yaml:/etc/agent/agent.yaml
-      - /mnt/gpts-logs:/var/log/gpts:ro
-    command: 
-      - --config.file=/etc/agent/agent.yaml
-    ports:
-      - "12345:12345"
+  #loki:
+  #  image: grafana/loki:2.9.0
+  #  container_name: loki
+  #  user: "65534"  # Пользователь nobody, от которого работает Loki
+  #  volumes:
+  #    - ./loki-config.yaml:/etc/loki/config.yaml
+  #    - ./loki-data:/loki
+  #    - ./loki-wal:/wal
+  #  command: -config.file=/etc/loki/config.yaml
+  #  ports:
+  #    - "3100:3100"
+#
+  #grafana-agent:
+  #  image: grafana/agent:v0.36.1  # Используем существующий тег
+  #  container_name: grafana-agent
+  #  restart: unless-stopped
+  #  depends_on:
+  #    loki:
+  #      condition: service_started
+  #  volumes:
+  #    - ./aagent.yaml:/etc/agent/agent.yaml
+  #    - /mnt/gpts-logs:/var/log/gpts:ro
+  #  command: 
+  #    - --config.file=/etc/agent/agent.yaml
+  #  ports:
+  #    - "12345:12345"
 
 
 
@@ -148,6 +203,6 @@ services:
 ######## PRODUCT SERVICES ########
 
 volumes:
-  postgres-data:
+  #postgres-data:
   grafana-data:
   

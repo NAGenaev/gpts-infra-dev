@@ -7,6 +7,12 @@ scrape_configs:
     static_configs:
       - targets: ['kafka-exporter:9308']
 
+
+#####  - job_name: 'kafka2'
+#####    static_configs:
+#####      - targets: ['kafka-exporter2:9308']
+#####
+#####
   - job_name: 'postgres'
     static_configs:
       - targets: ['postgres-exporter:9187']
@@ -22,5 +28,13 @@ scrape_configs:
       - targets: ['gpts.local:8443']  # или 8081 если HTTP
     metrics_path: /actuator/prometheus
     tls_config:
-      insecure_skip_verify: true     
+      insecure_skip_verify: true
+
+#####  - job_name: 'JavaREBUBLIC'
+#####    scheme: http                      
+#####    static_configs:
+#####      - targets: ['gpts.local:8001']  
+#####    metrics_path: /actuator/prometheus
+#####    #tls_config:
+#####    #  insecure_skip_verify: true 
   
