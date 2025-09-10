@@ -30,6 +30,12 @@ scrape_configs:
     tls_config:
       insecure_skip_verify: true
 
+  - job_name: 'Fin_Orchestra'
+    scheme: http                      # или http, если не используешь TLS
+    static_configs:
+      - targets: ['gpts.local:8083']  # или 8081 если HTTP
+    metrics_path: /actuator/prometheus
+
 #####  - job_name: 'JavaREBUBLIC'
 #####    scheme: http                      
 #####    static_configs:

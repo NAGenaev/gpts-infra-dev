@@ -3,3 +3,6 @@ grafana-data/
 RM/
 loki-data/
 loki-wal/
+gpts.crt
+gpts.key
+gpts.p12
