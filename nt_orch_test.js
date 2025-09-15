@@ -7,7 +7,7 @@ export const options = {
     fixed_requests: {
       executor: 'per-vu-iterations',
       vus: 50,              // количество виртуальных пользователей
-      iterations: 10000,      // число запросов на каждого VU
+      iterations: 4000,      // число запросов на каждого VU
       maxDuration: '10m',   // лимит по времени, чтобы не зависло
     },
   },
@@ -42,5 +42,5 @@ export default function () {
   check(res, {
     'status is 202': (r) => r.status === 202,
   });
-  //sleep(0.1);
+  sleep(0.1);
 }
