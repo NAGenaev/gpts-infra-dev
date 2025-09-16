@@ -1,0 +1,68 @@
+POST
+http://localhost:8083/api/v1/inner-transfers
+{
+  "transferId": "{{$guid}}",
+  "fromUserId": "{{$guid}}",
+  "toUserId": "{{$guid}}",
+  "amount": {{amount}},
+  "currency": "RUB"
+}
+
+POST
+http://localhost:8083/api/v1/inner-transfers
+{
+  "transferId": "12b99f80-1453-4f19-848d-9ee9b359a0e2",
+  "fromUserId": "12b99f80-1453-4f19-848d-9ee9b359a0e9",
+  "toUserId": "12b99f80-1453-4f19-848d-9ee9b359a0e2",
+  "amount": 6710.41,
+  "currency": "RUB"
+}
+
+GET
+http://localhost:8083/api/v1/inner-transfers/128fef3d-5960-4814-9c48-967020c4986a/status
+
+
+
+$ grpcurl -plaintext -d '{
+  "transactionId": "T123",
+  "orchestratorOperId": "O987",
+  "messageId": "M555",
+  "productMasterId": 1001,
+  "accountUnitId": 2002,
+  "amount": 500.75,
+  "currency": "RUB"
+}' localhost:9090 gpts.transfer.operation.TransferOperationService/PrepareDecrease
+
+$ grpcurl -plaintext -d '{
+  "transactionId": "T124",
+  "orchestratorOperId": "O988",
+  "messageId": "M556",
+  "productMasterId": 1001,
+  "accountUnitId": 2002,
+  "amount": 1000,
+  "currency": "RUB"
+}' localhost:9090 gpts.transfer.operation.TransferOperationService/PrepareDecrease
+
+
+grpcurl -plaintext -d "{\"account_id\":\"112233\"}" localhost:9093 AccountChecker/CheckAccountStatus
+{
+  "account_id": "112233",
+  "status": "BLOCKED",
+  "reasons": [
+    {
+      "type": "BLOCK",
+      "block_type": "T_ARREST",
+      "reason": "Счет заблокирован AntiFraudSystem по подозрению в мошенничестве",
+      "source": "CourtDecision"
+    },
+    {
+      "type": "SANCTION",
+      "sanction_type": "Internal",
+      "reason": "Внутреннее ограничение операций",
+      "source": "InternalCompliance"
+    }
+  ]
+}
+
+
+
