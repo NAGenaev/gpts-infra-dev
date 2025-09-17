@@ -44,6 +44,36 @@ $ grpcurl -plaintext -d '{
 }' localhost:9090 gpts.transfer.operation.TransferOperationService/PrepareDecrease
 
 
+
+localhost:9090 gpts.transfer.operation.TransferOperationService/CommitDecrease
+{
+    "transactionId": "T123",
+    "orchestratorOperId": "O987",
+    "messageId": "M112",
+    "operationId": "10"
+}
+
+localhost:9090 gpts.transfer.operation.TransferOperationService/RollbackDecrease
+{
+    "transactionId": "T124",
+    "orchestratorOperId": "O988",
+    "messageId": "M119",
+    "operationId": "8"
+}
+
+localhost:9090 gpts.transfer.operation.TransferOperationService/ExecuteIncrease
+{
+    "transactionId": "T1272",
+    "orchestratorOperId": "O9912",
+    "messageId": "M5592",
+    "productMasterId": 1001,
+    "accountUnitId": 2002,
+    "amount": 10000,
+    "currency": "RUB"
+}
+
+
+
 grpcurl -plaintext -d "{\"account_id\":\"112233\"}" localhost:9093 AccountChecker/CheckAccountStatus
 {
   "account_id": "112233",
@@ -64,5 +94,12 @@ grpcurl -plaintext -d "{\"account_id\":\"112233\"}" localhost:9093 AccountChecke
   ]
 }
 
+Получить счет из пула
+POST
+http://localhost:8083/api/v1/accounts/return?accGlobalId=
+
+Вернуть счет в пул
+POST
+http://localhost:8083/api/v1/accounts/get?productType=CURRENT
 
 
