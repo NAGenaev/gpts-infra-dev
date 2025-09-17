@@ -31,7 +31,7 @@ VALUES
 ('112233', 'UN', 'Внесен в санкционный список ООН', 'Regulator', true, now()),
 ('112233', 'FATF', 'Подозрение на финансирование терроризма', 'FATFMonitor', true, now());
 
-
+-- Очистка сущностепй оркестратора для тестов
 truncate table gpts_transfer_orchestrator.transfer_history;
 truncate table gpts_transfer_orchestrator.transfer_saga;
 truncate table gpts_transfer_orchestrator.transfers;
@@ -57,8 +57,24 @@ INSERT INTO gpts_account_product.account_unit_values
 VALUES
     (3003, 'ACTIVE', 1001, 2002, 'AVAILABLE', 10000.00, null, now(), now());
 
+INSERT INTO gpts_account_product.account_unit_values
+    (id, record_status, product_id, unit_id, type, value, last_operation_id, business_day, calculation_time)
+VALUES
+    (3004, 'ACTIVE', 1001, 2002, 'CURRENT', 10000.00, null, now(), now());
 
+
+-- Подгон таблицы, в ликве учтено, но на всякий случай
 ALTER TABLE gpts_account_product.operations
 ALTER COLUMN id ADD GENERATED ALWAYS AS IDENTITY;
+
+-- Очистка счетов и пулов
+truncate table gpts_account_product_sub.accounts;
+truncate table gpts_account_product_sub.accounts_pool;
+
+-- Выборки по пулам для проверки
+select count(*) from gpts_account_product_sub.accounts where gpts_account_product_sub.accounts.pool_id = '276de352-94a1-40fb-882b-1f6e701ef552' and gpts_account_product_sub.accounts.status = 'ACTIVE'
+select count(*) from gpts_account_product_sub.accounts where gpts_account_product_sub.accounts.status = 'ACTIVE'
+select count(*) from gpts_account_product_sub.accounts where gpts_account_product_sub.accounts.status not like 'ACTIVE'
+
 
 
