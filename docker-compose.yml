@@ -24,6 +24,27 @@ services:
       retries: 5
       start_period: 5s
 
+######## REDIS ########
+  redis:
+    image: redis:7.2
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  redis_exporter:
+    image: oliver006/redis_exporter:latest
+    ports:
+      - "9121:9121"
+    environment:
+      - REDIS_ADDR=redis://redis:6379
+    depends_on:
+      - redis
+    restart: unless-stopped
+
 ######## KAFKA ########
   zookeeper:
     image: bitnami/zookeeper:3.8
