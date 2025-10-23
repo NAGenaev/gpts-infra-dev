@@ -1,6 +1,365 @@
 version: '3.8'
 
 services:
+######## gpts-transfer-orchestrator ########
+  gpts-transfer-orchestrator:
+    image: ghcr.io/nagenaev/gpts-transfer-orchestrator:latest
+    container_name: gpts-transfer-orchestrator
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    ports:
+      - "8083:8083"
+    #networks:
+    #  - gpts-network
+    environment:
+      # Spring
+      SPRING_APPLICATION_NAME: gpts-transfer-orchestrator
+      SERVER_PORT: 8083
+      # Datasource
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/gpts
+      SPRING_DATASOURCE_USERNAME: gpts_worker_orchestrator
+      SPRING_DATASOURCE_PASSWORD: orchestrator_pass
+      HIKARI_MIN_IDLE: 50
+      HIKARI_MAX_POOL_SIZE: 100
+      HIKARI_IDLE_TIMEOUT: 30000
+      HIKARI_MAX_LIFETIME: 1800000
+      HIKARI_CONNECTION_TIMEOUT: 30000
+      HIKARI_CURRENT_SCHEMA: gpts_transfer_orchestrator
+      # Kafka
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_CONSUMER_GROUP: gpts-transfer-orchestrator
+      # Logging (опционально)
+      ROOT_LOG: INFO
+      GPTS_COM_LOG: INFO
+      HIKARI_CONNECTIONS_LOG: WARN
+      HIKARI_CONFIG_LOG: INFO
+      SPRING_KAFKA_LOG: WARN
+      KAFKA_LOG: WARN
+      KAFKA_CONSUMER_LOG: WARN
+      KAFKA_PRODUCER_LOG: WARN
+      # Интеграции
+      ACCOUNT_CHECKER_HOST: gpts-sanctions
+      ACCOUNT_CHECKER_PORT: 9094
+      LIMIT_FEE_HOST: limitfee-service
+      LIMIT_FEE_PORT: 9097
+      FRAUD_HOST: fraud-service
+      FRAUD_PORT: 9090
+      OPERATIONS_HOST: transferoperation-service
+      OPERATIONS_PORT: 9090
+
+######## gpts-client-dash ########
+  gpts-client-dash:
+    image: ghcr.io/nagenaev/gpts-client-dash:latest
+    container_name: gpts-client-dash
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${SERVER_PORT:-8090}:8090"
+    restart: unless-stopped
+    #networks:
+    #  - gpts-network
+    depends_on:
+      - postgres
+    environment:
+      # Spring/Server
+      - SERVER_PORT=${SERVER_PORT:-8090}
+      - FEIGN_CONNECT_TIMEOUT=${FEIGN_CONNECT_TIMEOUT:-5000}
+      - FEIGN_READ_TIMEOUT=${FEIGN_READ_TIMEOUT:-5000}
+      # CORS
+      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:5173}
+      # JWT
+      - JWT_SECRET=${JWT_SECRET:-supersecretkey123supersecretkey123453fdweewwejrweorkiowekrowerewpeppwerwpppqqwqqweqweq}
+      - JWT_EXPIRATION_MS=${JWT_EXPIRATION_MS:-3600000}
+      # Downstream services
+      - SERVICES_CLIENTS_URL=${SERVICES_CLIENTS_URL:-http://host.docker.internal:8080}
+      - SERVICES_UNIT_CORE_URL=${SERVICES_UNIT_CORE_URL:-http://host.docker.internal:8087}
+      - SERVICES_OPERATION_HISTORY_URL=${SERVICES_OPERATION_HISTORY_URL:-http://host.docker.internal:8098}
+      - SERVICES_LIMIT_FEE_URL=${SERVICES_LIMIT_FEE_URL:-http://host.docker.internal:8085}
+      - SERVICES_API_TRANSFER_URL=${SERVICES_API_TRANSFER_URL:-http://host.docker.internal:8083}
+      - SERVICES_RESOLVER_URL=${SERVICES_RESOLVER_URL:-http://host.docker.internal:8481}
+
+######## gpts-unit-core ########
+  gpts-unit-core:
+    image: ghcr.io/nagenaev/gpts-unit-core:latest
+    container_name: gpts-unit-core
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${SERVER_PORT:-8087}:${SERVER_PORT:-8087}"
+    #networks:
+    #  - gpts-network
+    restart: unless-stopped
+    environment:
+      # Application Configuration
+      - APP_NAME=${APP_NAME:-gpts-unit-core}
+      - SERVER_PORT=${SERVER_PORT:-8087}
+      # Database Configuration
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_NAME=${DB_NAME:-gpts}
+      - DB_USERNAME=${DB_USERNAME:-gpts}
+      - DB_PASSWORD=${DB_PASSWORD:-gpts}
+      - DB_SCHEMA=${DB_SCHEMA:-gpts_account_product}
+      # Hikari Connection Pool
+      - HIKARI_POOL_NAME=${HIKARI_POOL_NAME:-GPTS-core-HikariPool}
+      - HIKARI_MIN_IDLE=${HIKARI_MIN_IDLE:-5}
+      - HIKARI_MAX_POOL_SIZE=${HIKARI_MAX_POOL_SIZE:-10}
+      - HIKARI_IDLE_TIMEOUT=${HIKARI_IDLE_TIMEOUT:-30000}
+      - HIKARI_MAX_LIFETIME=${HIKARI_MAX_LIFETIME:-1800000}
+      - HIKARI_CONNECTION_TIMEOUT=${HIKARI_CONNECTION_TIMEOUT:-30000}
+      # Database Connection Properties
+      - DB_TCP_KEEP_ALIVE=${DB_TCP_KEEP_ALIVE:-true}
+      - DB_LOGIN_TIMEOUT=${DB_LOGIN_TIMEOUT:-10}
+      - DB_SOCKET_TIMEOUT=${DB_SOCKET_TIMEOUT:-30}
+      - DB_REWRITE_BATCHED_INSERTS=${DB_REWRITE_BATCHED_INSERTS:-true}
+      - DB_PREPARE_THRESHOLD=${DB_PREPARE_THRESHOLD:-3}
+      # JPA Configuration
+      - JPA_DDL_AUTO=${JPA_DDL_AUTO:-update}
+      - JPA_SHOW_SQL=${JPA_SHOW_SQL:-false}
+      # Actuator Configuration
+      - ACTUATOR_ENDPOINTS=${ACTUATOR_ENDPOINTS:-health,info,metrics,prometheus}
+      # Unit Configuration
+      - UNIT_DEFAULT_STATUS=${UNIT_DEFAULT_STATUS:-ACTIVE}
+      - UNIT_CLOSED_STATUS=${UNIT_CLOSED_STATUS:-CLOSED}
+      - UNIT_DEFAULT_CURRENCY=${UNIT_DEFAULT_CURRENCY:-RUB}
+      - UNIT_INITIAL_BALANCE=${UNIT_INITIAL_BALANCE:-0}
+      - UNIT_CURRENT_TYPE=${UNIT_CURRENT_TYPE:-CURRENT}
+      - UNIT_AVAILABLE_TYPE=${UNIT_AVAILABLE_TYPE:-AVAILABLE}
+      - UNIT_ACTIVE_RECORD_STATUS=${UNIT_ACTIVE_RECORD_STATUS:-ACTIVE}
+      - UNIT_CLOSED_RECORD_STATUS=${UNIT_CLOSED_RECORD_STATUS:-CLOSED}
+      # Account Configuration
+      - ACCOUNT_DEFAULT_STATUS=${ACCOUNT_DEFAULT_STATUS:-ACTIVE}
+      - ACCOUNT_CLOSED_STATUS=${ACCOUNT_CLOSED_STATUS:-CLOSED}
+      - ACCOUNT_NUMBER_MIN_LENGTH=${ACCOUNT_NUMBER_MIN_LENGTH:-10}
+      - ACCOUNT_NUMBER_MAX_LENGTH=${ACCOUNT_NUMBER_MAX_LENGTH:-30}
+      # Database Retry Configuration
+      - DB_QUERY_TIMEOUT=${DB_QUERY_TIMEOUT:-30}
+      - DB_MAX_RETRY_ATTEMPTS=${DB_MAX_RETRY_ATTEMPTS:-3}
+      - DB_RETRY_DELAY=${DB_RETRY_DELAY:-1000}
+      # Logging Configuration
+      - LOG_LEVEL_ROOT=${LOG_LEVEL_ROOT:-INFO}
+      - LOG_LEVEL_APP=${LOG_LEVEL_APP:-INFO}
+      - LOG_LEVEL_HIBERNATE=${LOG_LEVEL_HIBERNATE:-WARN}
+      - LOG_LEVEL_HIKARI=${LOG_LEVEL_HIKARI:-INFO}
+      - LOG_LEVEL_KAFKA=${LOG_LEVEL_KAFKA:-WARN}
+      - LOG_LEVEL_KAFKA_CORE=${LOG_LEVEL_KAFKA_CORE:-WARN}
+      - LOG_LEVEL_KAFKA_CONSUMER=${LOG_LEVEL_KAFKA_CONSUMER:-WARN}
+      - LOG_LEVEL_KAFKA_PRODUCER=${LOG_LEVEL_KAFKA_PRODUCER:-WARN}
+      - LOG_PATTERN=${LOG_PATTERN:-"%d{yyyy-MM-dd HH:mm:ss.SSS} [%level] [%thread] %logger{36} - %msg%n"}
+
+######## gpts-transfer-history ########
+  gpts-transfer-history:
+    image: ghcr.io/nagenaev/gpts-transfer-history:latest
+    container_name: gpts-transfer-history
+    restart: unless-stopped
+    ports:
+      - "8098:8098"
+    environment:
+      # Kafka Configuration
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_CONSUMER_GROUP_ID=gpts-transfer-history
+      - KAFKA_AUTO_OFFSET_RESET=earliest
+      - KAFKA_CONSUMER_CONCURRENCY=1
+      # Database Configuration
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=gpts
+      - DB_USERNAME=gpts_worker_history
+      - DB_PASSWORD=history_pass
+      - DB_SCHEMA=gpts_transfer_history
+      # Server Configuration
+      - SERVER_PORT=8098
+      # Logging Configuration (optional)
+      - LOGGING_LEVEL_ROOT=INFO
+      - LOGGING_LEVEL_COM_GPTS=DEBUG
+    depends_on:
+      - postgres
+      - kafka
+
+######## gpts-sanctions ########
+  gpts-sanctions:
+    image: ghcr.io/nagenaev/gpts-sanctions:latest
+    container_name: gpts-sanctions
+    restart: unless-stopped
+    ports:
+      - "8099:8099"  # REST API port
+      - "9094:9094"  # gRPC port
+    environment:
+      # Server configuration
+      - SERVER_PORT=8099
+      - GRPC_SERVER_PORT=9094
+      # Spring application
+      - SPRING_APPLICATION_NAME=gpts-sanctions
+      # Database configuration
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=gpts
+      - DB_USERNAME=gpts_worker_sanctions
+      - DB_PASSWORD=sanctions_pass
+      - GPTS_SANCTIONS_DB_SCHEMA=gpts_sanctions
+      # Database connection properties
+      - DB_TCP_KEEP_ALIVE=true
+      - DB_LOGIN_TIMEOUT=10
+      - DB_SOCKET_TIMEOUT=30
+      - DB_REWRITE_BATCHED_INSERTS=true
+      - DB_PREPARE_THRESHOLD=3
+      # HikariCP configuration
+      - HIKARI_POOL_NAME=GPTS-Sanctions-HikariPool
+      - HIKARI_MINIMUM_IDLE=5
+      - HIKARI_MAXIMUM_POOL_SIZE=20
+      - HIKARI_IDLE_TIMEOUT=30000
+      - HIKARI_MAX_LIFETIME=1800000
+      - HIKARI_CONNECTION_TIMEOUT=30000
+      # Liquibase configuration
+      - LIQUIBASE_CONTEXTS=sanctions
+      - LIQUIBASE_ENABLED=true
+      - LIQUIBASE_CHANGELOG=db/changelog/db.changelog-master.yaml
+      # JPA configuration
+      - JPA_HIBERNATE_DDL_AUTO=none
+      - JPA_SHOW_SQL=false
+      # Management endpoints
+      - MANAGEMENT_ENDPOINTS_INCLUDE=health,metrics,prometheus
+      # Logging configuration
+      - LOG_LEVEL_ROOT=INFO
+      - LOG_LEVEL_COM_GPTS=DEBUG
+      - LOG_LEVEL_HIBERNATE=WARN
+      - LOG_LEVEL_HIKARI=INFO
+      - LOG_PATTERN_CONSOLE=%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n
+      # GPTS Sanctions specific configuration
+      - GPTS_SANCTIONS_ENABLE_BLOCK_CHECK=false
+      - GPTS_SANCTIONS_ENABLE_SANCTION_CHECK=true
+      - GPTS_SANCTIONS_ENABLE_HIKARI_LOGGER=true
+      - GPTS_SANCTIONS_MIN_ACCOUNT_ID=100000
+    depends_on:
+      - postgres
+
+  gpts-transfer-operation:
+    image: ghcr.io/nagenaev/gpts-transfer-operation:latest
+    container_name: gpts-transfer-operation
+    restart: unless-stopped
+    ports:
+      - "8089:8089"
+      - "9090:9090"  # gRPC порт
+    environment:
+      # Основные настройки приложения
+      - APP_NAME=gpts-transfer-operation
+      - SERVER_PORT=8089
+      # Настройки базы данных
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=gpts
+      - DB_USERNAME=gpts
+      - DB_PASSWORD=gpts
+      - DB_SCHEMA=gpts_account_product
+      - DB_TCP_KEEP_ALIVE=true
+      - DB_LOGIN_TIMEOUT=10
+      - DB_SOCKET_TIMEOUT=30
+      - DB_REWRITE_BATCHED_INSERTS=true
+      - DB_PREPARE_THRESHOLD=3
+      # Настройки HikariCP
+      - HIKARI_POOL_NAME=GPTS-Operations-HikariPool
+      - HIKARI_MIN_IDLE=50
+      - HIKARI_MAX_POOL_SIZE=100
+      - HIKARI_IDLE_TIMEOUT=30000
+      - HIKARI_MAX_LIFETIME=1800000
+      - HIKARI_CONNECTION_TIMEOUT=30000
+      # Настройки JPA/Hibernate
+      - JPA_DDL_AUTO=update
+      - JPA_SHOW_SQL=false
+      # Настройки Kafka
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      # Настройки комиссий
+      - COMMISSION_ACCOUNT_UNIT_ID=00000000-0000-0000-0000-000000000001
+      # Настройки мониторинга
+      - MANAGEMENT_ENDPOINTS=health,info,metrics,prometheus
+      # Настройки логирования
+      - LOG_LEVEL_ROOT=INFO
+      - LOG_LEVEL_GPTS=INFO
+      - LOG_LEVEL_HIBERNATE=WARN
+      - LOG_LEVEL_HIKARI=INFO
+      - LOG_LEVEL_KAFKA=WARN
+      - LOG_LEVEL_KAFKA_CLIENTS=WARN
+      - LOG_LEVEL_KAFKA_CONSUMER=WARN
+      - LOG_LEVEL_KAFKA_PRODUCER=WARN
+      - LOG_PATTERN_CONSOLE="[%level] %logger{36} - %msg%n"
+    depends_on:
+      - postgres
+      - kafka
+
+  gpts-fraud-service:
+    image: ghcr.io/nagenaev/gpts-fraud-service:latest
+    container_name: gpts-fraud-service
+    ports:
+      - "8084:8084"  # HTTP port
+      - "9093:9093"  # gRPC port
+    environment:
+      # Server configuration
+      - SERVER_PORT=8084
+      - GRPC_SERVER_PORT=9093
+      # Database configuration
+      - DATASOURCE_URL=jdbc:postgresql://postgres:5432/gpts
+      - DATASOURCE_USERNAME=gpts_worker_fraud
+      - DATASOURCE_PASSWORD=fraud_pass
+      - FRAUD_DB_SCHEMA=gpts_fraud
+      # Kafka configuration
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - KAFKA_TOPIC_BLOCK_REQUESTS=user-block-requests
+      - KAFKA_TOPIC_UNBLOCK_REQUESTS=user-unblock-requests
+      - KAFKA_PRODUCER_ACKS=all
+      - KAFKA_PRODUCER_RETRIES=3
+      - KAFKA_PRODUCER_RETRY_BACKOFF_MS=1000
+      # Application configuration
+      - SPRING_APPLICATION_NAME=gpts-fraud-service
+      - LIQUIBASE_ENABLED=true
+      # Connection pool configuration
+      - HIKARI_MINIMUM_IDLE=5
+      - HIKARI_MAXIMUM_POOL_SIZE=20
+      - HIKARI_IDLE_TIMEOUT=30000
+      - HIKARI_MAX_LIFETIME=1800000
+      - HIKARI_CONNECTION_TIMEOUT=30000
+      # Fraud detection configuration
+      - FRAUD_VELOCITY_MAX_TX_PER_HOUR=20
+      - FRAUD_VELOCITY_MAX_AMOUNT_PER_HOUR=2000000.00
+      - FRAUD_VELOCITY_SCORE=30
+      - FRAUD_VELOCITY_MAX_TX_PER_HALF_HOUR=10
+      - FRAUD_VELOCITY_HALF_HOUR_SCORE=50
+      - FRAUD_LARGE_AMOUNT_THRESHOLD=500000.00
+      - FRAUD_LARGE_AMOUNT_SCORE=15
+      - FRAUD_NEW_RECIPIENT_SCORE=20
+      - FRAUD_NEW_RECIPIENT_MIN_RECIPIENTS=5
+      - FRAUD_NEW_RECIPIENT_MAX_TX_FOR_NEW_USER=10
+      - FRAUD_NEW_RECIPIENT_NEW_USER_PERIOD_DAYS=7
+      # Fraud thresholds
+      - FRAUD_THRESHOLD_APPROVED=25
+      - FRAUD_THRESHOLD_REVIEW=60
+      - FRAUD_THRESHOLD_REJECTED=85
+      # Idempotency configuration
+      - FRAUD_IDEMPOTENCY_TTL_DAYS=7
+      - FRAUD_IDEMPOTENCY_VELOCITY_TTL_HOURS=1
+      - FRAUD_IDEMPOTENCY_DAILY_STATS_TTL_DAYS=1
+      # Scheduler configuration
+      - FRAUD_SCHEDULER_STATS_ENABLED=true
+      - FRAUD_SCHEDULER_STATS_DELAY=30000
+      - FRAUD_SCHEDULER_RATINGS_ENABLED=true
+      - FRAUD_SCHEDULER_RATINGS_CRON=0 * * * * ?
+      # Logging configuration
+      - LOG_LEVEL_ROOT=INFO
+      - LOG_LEVEL_COM_GPTS=DEBUG
+      - LOG_LEVEL_HIBERNATE=WARN
+      - LOG_LEVEL_HIKARI=INFO
+      # Management endpoints
+      - MANAGEMENT_ENDPOINTS_INCLUDE=health,metrics,prometheus
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+
 ######## POSTGRES ########
   postgres:
     image: postgres:15
@@ -62,22 +421,26 @@ services:
     image: bitnami/kafka:3.5
     ports:
       - "9092:9092"  # внешний (для приложений на 192.168.0.145)
-      - "9093:9093"  # внутренний (для сервисов в docker-сети)
+      - "9095:9095"  # внутренний (для сервисов в docker-сети)
     depends_on:
       - zookeeper
     environment:
       - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
       - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=EXTERNAL:PLAINTEXT,INTERNAL:PLAINTEXT
-      - KAFKA_CFG_LISTENERS=EXTERNAL://:9092,INTERNAL://:9093
-      - KAFKA_CFG_ADVERTISED_LISTENERS=EXTERNAL://192.168.0.145:9092,INTERNAL://kafka:9093
+      - KAFKA_CFG_LISTENERS=EXTERNAL://:9092,INTERNAL://:9095
+      - KAFKA_CFG_ADVERTISED_LISTENERS=EXTERNAL://192.168.0.145:9092,INTERNAL://kafka:9095
       - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
       - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
       - KAFKA_BROKER_ID=1
       - KAFKA_CFG_NUM_PARTITIONS=10
       - KAFKA_CFG_REPLICATION_FACTOR=1
       - KAFKA_CFG_LOG_RETENTION_HOURS=1
+      # Добавленные параметры для поддержки транзакций
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_CFG_TRANSACTIONAL_ID_EXPIRATION_MS=86400000  # 24 часа
     healthcheck:
-      test: ["CMD", "kafka-topics.sh", "--bootstrap-server", "kafka:9093", "--list"]
+      test: ["CMD", "kafka-topics.sh", "--bootstrap-server", "kafka:9095", "--list"]
       interval: 10s
       timeout: 10s
       retries: 5
@@ -87,7 +450,7 @@ services:
     image: provectuslabs/kafka-ui
     environment:
       - KAFKA_CLUSTERS_0_NAME=my-cluster
-      - KAFKA_CLUSTERS_0_BOOTSTRAP_SERVERS=kafka:9093  # адрес kafka
+      - KAFKA_CLUSTERS_0_BOOTSTRAP_SERVERS=kafka:9095  # адрес kafka
     ports:
       - "8080:8080"
     healthcheck:
@@ -102,7 +465,7 @@ services:
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
-      - "9090:9090"
+      - "9091:9090"
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:9090/-/ready || exit 1"]
       interval: 10s
@@ -132,7 +495,7 @@ services:
     container_name: cadvisor
     privileged: true
     ports:
-      - "8089:8080"
+      - "8189:8080"
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:ro
@@ -150,9 +513,9 @@ services:
     ports:
       - "9308:9308"
     environment:
-      KAFKA_URI: kafka:9093
+      KAFKA_URI: kafka:9095
     command:
-      - '--kafka.server=kafka:9093'
+      - '--kafka.server=kafka:9095'
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:9308/metrics | grep kafka_brokers || exit 1"]
       interval: 10s
@@ -218,7 +581,18 @@ services:
       retries: 5
       start_period: 10s
 
+######## volumes ########
+volumes:
+  postgres-data:
+  grafana-data:
+  
 
+######## networks ########
+###networks:
+###  gpts-network:
+###    driver: bridge
+###  gpts-infra-monitoring:
+###    driver: bridge
 
 ######## LOAD BALANCER ########
 
@@ -227,11 +601,3 @@ services:
 ########     ports: [80:80]
 ########     volumes:
 ########       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-
-
-######## PRODUCT SERVICES ########
-
-volumes:
-  postgres-data:
-  grafana-data:
-  
