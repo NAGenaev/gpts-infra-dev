@@ -7,40 +7,81 @@ scrape_configs:
     static_configs:
       - targets: ['kafka-exporter:9308']
 
-
-#####  - job_name: 'kafka2'
-#####    static_configs:
-#####      - targets: ['kafka-exporter2:9308']
-#####
-#####
   - job_name: 'postgres'
     static_configs:
       - targets: ['postgres-exporter:9187']
+
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis_exporter:9121']
 
   - job_name: 'cadvisor'
     static_configs:
       - targets: ['cadvisor:8080']
 
-
-  - job_name: 'JavaAPI'
-    scheme: https                      # или http, если не используешь TLS
+##########GPTS MICROSERVICES##########
+  - job_name: 'gpts-transfer-orchestrator'
     static_configs:
-      - targets: ['gpts.local:8443']  # или 8081 если HTTP
-    metrics_path: /actuator/prometheus
-    tls_config:
-      insecure_skip_verify: true
-
-  - job_name: 'Fin_Orchestra'
-    scheme: http                      # или http, если не используешь TLS
-    static_configs:
-      - targets: ['gpts.local:8083']  # или 8081 если HTTP
+      - targets: ['gpts-transfer-orchestrator:8083']
     metrics_path: /actuator/prometheus
 
-#####  - job_name: 'JavaREBUBLIC'
-#####    scheme: http                      
-#####    static_configs:
-#####      - targets: ['gpts.local:8001']  
-#####    metrics_path: /actuator/prometheus
-#####    #tls_config:
-#####    #  insecure_skip_verify: true 
+  - job_name: 'gpts-client-dash'
+    static_configs:
+      - targets: ['gpts-client-dash:8090']
+    metrics_path: /actuator/prometheus
+
+  - job_name: 'gpts-unit-core'
+    static_configs:
+      - targets: ['gpts-unit-core:8087']
+    metrics_path: /actuator/prometheus
+
+  - job_name: 'gpts-transfer-history'
+    static_configs:
+      - targets: ['gpts-transfer-history:8098']
+    metrics_path: /actuator/prometheus
+
+  - job_name: 'gpts-sanctions'
+    static_configs:
+      - targets: ['gpts-sanctions:8099']
+    metrics_path: /actuator/prometheus
+
+  - job_name: 'gpts-transfer-operation'
+    static_configs:
+      - targets: ['gpts-transfer-operation:8089']
+    metrics_path: /actuator/prometheus
+
+  - job_name: 'gpts-fraud-service'
+    static_configs:
+      - targets: ['gpts-fraud-service:8084']
+    metrics_path: /actuator/prometheus
+
+  - job_name: 'gpts-unit-open'
+    static_configs:
+      - targets: ['gpts-unit-open:8088']
+    metrics_path: /actuator/prometheus
+
+  - job_name: 'gpts-unit-close'
+    static_configs:
+      - targets: ['gpts-unit-close:8097']
+    metrics_path: /actuator/prometheus
+
+  - job_name: 'gpts-account-pool-generator'
+    static_configs:
+      - targets: ['gpts-account-pool-generator:8480']
+    metrics_path: /actuator/prometheus
+
+  - job_name: 'gpts-clients-service'
+    static_configs:
+      - targets: ['gpts-clients-service:8080']
+    metrics_path: /actuator/prometheus
+
+  - job_name: 'gpts-limit-fee-service'
+    static_configs:
+      - targets: ['gpts-limit-fee-service:8085']
+    metrics_path: /actuator/prometheus
+
+  - job_name: 'gpts-transfer-resolver'
+    static_configs:
+      - targets: ['gpts-transfer-resolver:8481']
+    metrics_path: /actuator/prometheus 
   
