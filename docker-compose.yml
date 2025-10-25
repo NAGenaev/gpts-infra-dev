@@ -576,7 +576,8 @@ services:
       - postgres
       - redis
     restart: unless-stopped
-
+    
+######## gpts-transfer-resolver ########
   gpts-transfer-resolver:
     image: ghcr.io/nagenaev/gpts-transfer-resolver:latest
     container_name: gpts-transfer-resolver
@@ -586,9 +587,9 @@ services:
       # Server configuration
       - SERVER_PORT=8481
       # External services URLs
-      - EXTERNAL_SERVICES_USER_SERVICE_URL=http://gpts-user-service:8080
-      - EXTERNAL_SERVICES_ACCOUNT_SERVICE_URL=http://gpts-account-service:8087
-      - EXTERNAL_SERVICES_TRANSFER_SERVICE_URL=http://gpts-transfer-service:8083
+      - EXTERNAL_SERVICES_USER_SERVICE_URL=http://gpts-clients-service:8080
+      - EXTERNAL_SERVICES_ACCOUNT_SERVICE_URL=http://gpts-unit-core:8087
+      - EXTERNAL_SERVICES_TRANSFER_SERVICE_URL=http://gpts-transfer-orchestrator:8083
       # Connection timeouts
       - EXTERNAL_SERVICES_CONNECTION_TIMEOUT=5000
       - EXTERNAL_SERVICES_CONNECTION_READ_TIMEOUT=10000
@@ -596,9 +597,9 @@ services:
       - LOGGING_LEVEL_COM_GPTS_GPTS_TRANSFER_RESOLVER=DEBUG
       - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB_CLIENT_RESTTEMPLATE=DEBUG
     depends_on:
-      - gpts-user-service
-      - gpts-account-service
-      - gpts-transfer-service
+      - gpts-clients-service
+      - gpts-unit-core
+      - gpts-transfer-orchestrator
     restart: unless-stopped
 
 
