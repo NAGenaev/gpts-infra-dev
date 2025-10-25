@@ -13,8 +13,6 @@ services:
       - postgres
     ports:
       - "8083:8083"
-    #networks:
-    #  - gpts-network
     environment:
       # Spring
       SPRING_APPLICATION_NAME: gpts-transfer-orchestrator
@@ -526,7 +524,7 @@ services:
       - LOG_PATTERN_FILE=${CLIENTS_LOG_PATTERN_FILE:-"%d{yyyy-MM-dd HH:mm:ss} [%level] [%thread] %logger{36} - %msg%n"}
     depends_on:
       - postgres
-
+######## gpts-clients-service ########
   gpts-limit-fee-service:
     image: ghcr.io/nagenaev/gpts-limit-fee-service:latest
     container_name: gpts-limit-fee-service
@@ -578,6 +576,31 @@ services:
       - postgres
       - redis
     restart: unless-stopped
+
+  gpts-transfer-resolver:
+    image: ghcr.io/nagenaev/gpts-transfer-resolver:latest
+    container_name: gpts-transfer-resolver
+    ports:
+      - "8481:8481"
+    environment:
+      # Server configuration
+      - SERVER_PORT=8481
+      # External services URLs
+      - EXTERNAL_SERVICES_USER_SERVICE_URL=http://gpts-user-service:8080
+      - EXTERNAL_SERVICES_ACCOUNT_SERVICE_URL=http://gpts-account-service:8087
+      - EXTERNAL_SERVICES_TRANSFER_SERVICE_URL=http://gpts-transfer-service:8083
+      # Connection timeouts
+      - EXTERNAL_SERVICES_CONNECTION_TIMEOUT=5000
+      - EXTERNAL_SERVICES_CONNECTION_READ_TIMEOUT=10000
+      # Logging
+      - LOGGING_LEVEL_COM_GPTS_GPTS_TRANSFER_RESOLVER=DEBUG
+      - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB_CLIENT_RESTTEMPLATE=DEBUG
+    depends_on:
+      - gpts-user-service
+      - gpts-account-service
+      - gpts-transfer-service
+    restart: unless-stopped
+
 
 ######## POSTGRES ########
   postgres:
