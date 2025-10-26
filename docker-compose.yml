@@ -1,6 +1,75 @@
 version: '3.8'
 
 services:
+##################################
+##################################
+######## PRODUCT SERVICES ########
+######## PRODUCT SERVICES ########
+######## PRODUCT SERVICES ########
+##################################
+##################################
+
+######## gpts-frontend ########
+  gpts-frontend:
+    image: ghcr.io/nagenaev/gpts-frontend:latest
+    container_name: gpts-frontend
+    ports:
+      - "80:80"
+    environment:
+      - VITE_APP_NAME=NAGBank
+      - VITE_ENABLE_LOGGING=true
+      - API_SERVICE_NAME=gpts-client-dash
+      - API_SERVICE_PORT=8090
+      - AUTH_SERVICE_NAME=gpts-clients-service
+      - AUTH_SERVICE_PORT=8080
+    depends_on:
+      - gpts-client-dash
+      - gpts-clients-service
+    restart: unless-stopped
+    
+######## Scheme
+######## gpts-product-sub-maintenance ########
+  gpts-product-sub-maintenance:
+    image: ghcr.io/nagenaev/gpts-product-sub-maintenance:latest
+    container_name: gpts-product-sub-maintenance
+    environment:
+      # Server Configuration
+      - SERVER_PORT=${SERVER_PORT:-8083}
+      # Spring Application Configuration
+      - SPRING_APPLICATION_NAME=${SPRING_APPLICATION_NAME:-gpts-product-sub-maintenance}
+      # Liquibase Configuration
+      - LIQUIBASE_ENABLED=${LIQUIBASE_ENABLED:-true}
+      - LIQUIBASE_CHANGELOG=${LIQUIBASE_CHANGELOG:-classpath:db/changelog/master.yaml}
+      # Database Configuration
+      - DATASOURCE_URL=${DATASOURCE_URL:-jdbc:postgresql://postgres:5432/gpts}
+      - DATASOURCE_USERNAME=${DATASOURCE_USERNAME:-gpts}
+      - DATASOURCE_PASSWORD=${DATASOURCE_PASSWORD:-gpts}
+      - DATASOURCE_DRIVER_CLASS_NAME=${DATASOURCE_DRIVER_CLASS_NAME:-org.postgresql.Driver}
+      - DATASOURCE_CURRENT_SCHEMA=${DATASOURCE_CURRENT_SCHEMA:-gpts_account_product_sub}
+      - DATASOURCE_TCP_KEEP_ALIVE=${DATASOURCE_TCP_KEEP_ALIVE:-true}
+      - DATASOURCE_LOGIN_TIMEOUT=${DATASOURCE_LOGIN_TIMEOUT:-10}
+      - DATASOURCE_SOCKET_TIMEOUT=${DATASOURCE_SOCKET_TIMEOUT:-30}
+      - DATASOURCE_REWRITE_BATCHED_INSERTS=${DATASOURCE_REWRITE_BATCHED_INSERTS:-true}
+      - DATASOURCE_PREPARE_THRESHOLD=${DATASOURCE_PREPARE_THRESHOLD:-3}
+      # Hikari Connection Pool Configuration
+      - HIKARI_POOL_NAME=${HIKARI_POOL_NAME:-GPTS-PSM-HikariPool}
+      - HIKARI_MAXIMUM_POOL_SIZE=${HIKARI_MAXIMUM_POOL_SIZE:-2}
+      - HIKARI_MINIMUM_IDLE=${HIKARI_MINIMUM_IDLE:-2}
+      - HIKARI_IDLE_TIMEOUT=${HIKARI_IDLE_TIMEOUT:-30000}
+      - HIKARI_MAX_LIFETIME=${HIKARI_MAX_LIFETIME:-1800000}
+      - HIKARI_CONNECTION_TIMEOUT=${HIKARI_CONNECTION_TIMEOUT:-30000}
+      # Management Endpoints Configuration
+      - MANAGEMENT_ENDPOINTS_INCLUDE=${MANAGEMENT_ENDPOINTS_INCLUDE:-health,metrics,prometheus}
+      # Logging Configuration
+      - LOGGING_LEVEL_ROOT=${LOGGING_LEVEL_ROOT:-INFO}
+      - LOGGING_LEVEL_COM_GPTS=${LOGGING_LEVEL_COM_GPTS:-INFO}
+      - LOGGING_LEVEL_HIBERNATE=${LOGGING_LEVEL_HIBERNATE:-WARN}
+      - LOGGING_LEVEL_HIKARI=${LOGGING_LEVEL_HIKARI:-INFO}
+      - LOGGING_LEVEL_HIKARI_CONFIG=${LOGGING_LEVEL_HIKARI_CONFIG:-INFO}
+      - LOGGING_PATTERN_CONSOLE=${LOGGING_PATTERN_CONSOLE:-"%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"}
+    depends_on:
+      - postgres
+
 ######## gpts-transfer-orchestrator ########
   gpts-transfer-orchestrator:
     image: ghcr.io/nagenaev/gpts-transfer-orchestrator:latest
@@ -59,8 +128,6 @@ services:
     ports:
       - "8090:8090"
     restart: unless-stopped
-    #networks:
-    #  - gpts-network
     depends_on:
       - postgres
     environment:
@@ -90,8 +157,6 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8087:8087"
-    #networks:
-    #  - gpts-network
     restart: unless-stopped
     environment:
       # Application Configuration
@@ -101,8 +166,8 @@ services:
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: gpts
-      DB_USERNAME: gpts_worker_master
-      DB_PASSWORD: master_pass
+      DB_USERNAME: gpts
+      DB_PASSWORD: gpts
       DB_SCHEMA: gpts_account_product
       # Hikari Connection Pool
       HIKARI_POOL_NAME: GPTS-core-HikariPool
@@ -253,8 +318,8 @@ services:
       DB_HOST: postgres
       DB_PORT: 5432
       DB_NAME: gpts
-      DB_USERNAME: gpts_worker_master
-      DB_PASSWORD: master_pass
+      DB_USERNAME: gpts
+      DB_PASSWORD: gpts
       DB_SCHEMA: gpts_account_product
       DB_TCP_KEEP_ALIVE: true
       DB_LOGIN_TIMEOUT: 10
@@ -375,8 +440,8 @@ services:
       KAFKA_TOPIC_OPEN_UNIT_RESPONSES: open-unit-responses
       # Database Configuration
       DATASOURCE_URL: jdbc:postgresql://postgres:5432/gpts
-      DATASOURCE_USERNAME: gpts_worker_sub
-      DATASOURCE_PASSWORD: sub_pass
+      DATASOURCE_USERNAME: gpts
+      DATASOURCE_PASSWORD: gpts
       DATASOURCE_SCHEMA: gpts_account_product_sub
       # Hikari Connection Pool
       HIKARI_POOL_NAME: GPTS-Open-HikariPool
@@ -416,8 +481,8 @@ services:
     environment:
       # Database configuration
       DATABASE_URL: jdbc:postgresql://postgres:5432/gpts
-      DATABASE_USERNAME: gpts_worker_sub
-      DATABASE_PASSWORD: sub_pass
+      DATABASE_USERNAME: gpts
+      DATABASE_PASSWORD: gpts
       DATABASE_POOL_NAME: GPTS-Close-HikariPool
       DATABASE_MIN_IDLE: 5
       DATABASE_MAX_POOL_SIZE: 10
@@ -457,8 +522,8 @@ services:
       SPRING_APPLICATION_NAME: gpts-account-pool-generator
       # Database configuration
       DATASOURCE_URL: jdbc:postgresql://postgres:5432/gpts
-      DATASOURCE_USERNAME: gpts_worker_master
-      DATASOURCE_PASSWORD: master_pass
+      DATASOURCE_USERNAME: gpts
+      DATASOURCE_PASSWORD: gpts
       # Scheduler configuration
       SCHEDULER_POOL_CHECK_INTERVAL_MS: 60000
       SCHEDULER_PRODUCT_TYPE: CURRENT
@@ -524,6 +589,7 @@ services:
       LOG_PATTERN_FILE: "%d{yyyy-MM-dd HH:mm:ss} [%level] [%thread] %logger{36} - %msg%n"
     depends_on:
       - postgres
+
 ######## gpts-clients-service ########
   gpts-limit-fee-service:
     image: ghcr.io/nagenaev/gpts-limit-fee-service:latest
@@ -548,7 +614,7 @@ services:
       HIKARI_MAXIMUM_POOL_SIZE: 20
       HIKARI_IDLE_TIMEOUT: 30000
       HIKARI_MAX_LIFETIME: 1800000
-      HIKARI_CONNECTION_TIMEOUT: 30000}
+      HIKARI_CONNECTION_TIMEOUT: 30000
       # Database Connection Properties
       DATASOURCE_TCP_KEEP_ALIVE: true
       DATASOURCE_LOGIN_TIMEOUT: 10
@@ -602,6 +668,11 @@ services:
       - gpts-transfer-orchestrator
     restart: unless-stopped
 
+#######################
+######## INFRA ########
+######## INFRA ########
+######## INFRA ########
+#######################
 
 ######## POSTGRES ########
   postgres:
