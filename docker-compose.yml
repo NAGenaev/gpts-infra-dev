@@ -147,6 +147,8 @@ services:
       SERVICES_LIMIT_FEE_URL: http://gpts-limit-fee-service:8085
       SERVICES_API_TRANSFER_URL: http://gpts-transfer-orchestrator:8083
       SERVICES_RESOLVER_URL: http://gpts-transfer-resolver:8481
+      SERVICES_UNIT_OPEN_URL: http://gpts-unit-open:8088
+      SERVICES_UNIT_CLOSE_URL: http://gpts-unit-close:8097
 
 ######## gpts-unit-core ########
   gpts-unit-core:
@@ -576,7 +578,7 @@ services:
       # Application Settings
       DEFAULT_USER_ID: 99999
       DEFAULT_ROLE: ROLE_USER
-      ALLOWED_ORIGINS: http://gpts-frontend:5173
+      ALLOWED_ORIGINS: http://gpts-frontedn:80
       # Logging Configuration
       LOG_LEVEL_ROOT: INFO
       LOG_LEVEL_APP: INFO
