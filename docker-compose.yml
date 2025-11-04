@@ -18,10 +18,15 @@ services:
     environment:
       - VITE_APP_NAME=NAGBank
       - VITE_ENABLE_LOGGING=true
+      - VITE_API_BASE_URL=/api
+      - VITE_AUTH_API_URL=/auth
+      - VITE_PUSHGATEWAY_URL=/pushgateway
       - API_SERVICE_NAME=gpts-client-dash
       - API_SERVICE_PORT=8090
       - AUTH_SERVICE_NAME=gpts-clients-service
       - AUTH_SERVICE_PORT=8080
+      - PUSH_SERVICE_NAME=pushgateway
+      - PUSH_SERVICE_PORT=9091
     depends_on:
       - gpts-client-dash
       - gpts-clients-service
@@ -149,6 +154,15 @@ services:
       SERVICES_RESOLVER_URL: http://gpts-transfer-resolver:8481
       SERVICES_UNIT_OPEN_URL: http://gpts-unit-open:8088
       SERVICES_UNIT_CLOSE_URL: http://gpts-unit-close:8097
+      # Logset
+      LOGGING_LEVEL_ROOT: INFO
+      LOGGING_LEVEL_APP: INFO
+      LOGGING_LEVEL_FEIGN: INFO
+      LOGGING_LEVEL_FEIGN_CORE: INFO
+      LOGGING_LEVEL_WEB: INFO
+      LOGGING_LEVEL_SECURITY: INFO
+      LOGGING_LEVEL_BOOT: INFO
+      LOGGING_PATTERN_CONSOLE: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [%logger{50}] - %msg%n"
 
 ######## gpts-unit-core ########
   gpts-unit-core:
@@ -353,7 +367,7 @@ services:
       LOG_LEVEL_KAFKA_CLIENTS: WARN
       LOG_LEVEL_KAFKA_CONSUMER: WARN
       LOG_LEVEL_KAFKA_PRODUCER: WARN
-      LOG_PATTERN_CONSOLE: "[%level] %logger{36} - %msg%n"
+      LOG_PATTERN_CONSOLE: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
     depends_on:
       - postgres
       - kafka
@@ -383,7 +397,7 @@ services:
       KAFKA_PRODUCER_RETRY_BACKOFF_MS: 1000
       # Application configuration
       SPRING_APPLICATION_NAME: gpts-fraud-service
-      LIQUIBASE_ENABLED: true
+      SPRING_LIQUIBASE_ENABLED: true
       # Connection pool configuration
       HIKARI_MINIMUM_IDLE: 5
       HIKARI_MAXIMUM_POOL_SIZE: 20
@@ -412,12 +426,13 @@ services:
       FRAUD_IDEMPOTENCY_DAILY_STATS_TTL_DAYS: 1
       # Scheduler configuration
       FRAUD_SCHEDULER_STATS_ENABLED: true
-      FRAUD_SCHEDULER_STATS_DELAY: 30000
+      FRAUD_SCHEDULER_STATS_CRON: "0 */5 * * * ?"
       FRAUD_SCHEDULER_RATINGS_ENABLED: true
-      FRAUD_SCHEDULER_RATINGS_CRON: "0 * * * * ?"
+      FRAUD_SCHEDULER_RATINGS_CRON: "0 */5 * * * ?"
       # Logging configuration
+      LOG_PATTERN_CONSOLE: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
       LOG_LEVEL_ROOT: INFO
-      LOG_LEVEL_COM_GPTS: DEBUG
+      LOG_LEVEL_COM_GPTS: INFO
       LOG_LEVEL_HIBERNATE: WARN
       LOG_LEVEL_HIKARI: INFO
       # Management endpoints
@@ -461,6 +476,7 @@ services:
       # Server Configuration
       SERVER_PORT: 8088
       # Logging Configuration
+      LOG_PATTERN_CONSOLE: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
       LOG_LEVEL_ROOT: INFO
       LOG_LEVEL_GPT_COM: INFO
       LOG_LEVEL_HIBERNATE: WARN
@@ -527,7 +543,7 @@ services:
       DATASOURCE_USERNAME: gpts
       DATASOURCE_PASSWORD: gpts
       # Scheduler configuration
-      SCHEDULER_POOL_CHECK_INTERVAL_MS: 60000
+      SCHEDULER_CRON_EXPRESSION: 0 */2 * * * ?
       SCHEDULER_PRODUCT_TYPE: CURRENT
       # Account pool configuration
       ACCOUNT_POOL_DEFAULT_POOL_SIZE: 10
@@ -538,12 +554,29 @@ services:
       ACCOUNT_POOL_ACCOUNT_TYPE: STANDARD
       ACCOUNT_POOL_ACCOUNT_NUMBER_PREFIX: 4
       ACCOUNT_POOL_ACCOUNT_NUMBER_LENGTH: 20
+      #logs
+      LOGGING_LEVEL_ROOT: INFO
+      LOGGING_LEVEL_APP: INFO
+      LOGGING_LEVEL_HIBERNATE: WARN
+      LOGGING_LEVEL_SQL: WARN
+      LOGGING_LEVEL_HIKARI: WARN
+      LOGGING_LEVEL_SPRING_WEB: INFO
+      LOGGING_LEVEL_SPRING_BOOT: INFO
     restart: unless-stopped
 
     ######## gpts-clients-service ########
   gpts-clients-service:
     image: ghcr.io/nagenaev/gpts-clients-service:latest
     container_name: gpts-clients-service
+    # Ресурсы
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.2'
     restart: unless-stopped
     ports:
       - "8080:8080"
@@ -568,9 +601,6 @@ services:
       HIKARI_IDLE_TIMEOUT: 30000
       HIKARI_MAX_LIFETIME: 1800000
       HIKARI_CONNECTION_TIMEOUT: 30000
-      # JPA Configuration
-      JPA_DDL_AUTO: update
-      JPA_SHOW_SQL: true
       # JWT Configuration
       JWT_SECRET: supersecretkey123supersecretkey123453fdweewwejrweorkiowekrowerewpeppwerwpppqqwqqweqweq
       JWT_EXPIRATION_MS: 3600000
@@ -578,21 +608,25 @@ services:
       # Application Settings
       DEFAULT_USER_ID: 99999
       DEFAULT_ROLE: ROLE_USER
-      ALLOWED_ORIGINS: http://gpts-frontedn:80
-      # Logging Configuration
+      ALLOWED_ORIGINS: http://gpts-frontend:80
+
+      # Actuator and Monitoring Configuration
+      ACTUATOR_ENDPOINTS: health,info,metrics,prometheus
+      ACTUATOR_HEALTH_SHOW_DETAILS: always
+      ACTUATOR_METRICS_ENABLED: "true"
+      ACTUATOR_PROMETHEUS_ENABLED: "true"
+      PROMETHEUS_ENABLED: "true"
+      METRICS_PERCENTILES: 0.5,0.9,0.95,0.99
+
+      # Logging Configuration (подавление всех лишних логов)
       LOG_LEVEL_ROOT: INFO
       LOG_LEVEL_APP: INFO
-      LOG_LEVEL_HIBERNATE: WARN
-      LOG_LEVEL_HIKARI: INFO
-      LOG_LEVEL_SECURITY: WARN
-      LOG_LEVEL_WEB: INFO
-      LOG_LEVEL_TRANSACTION: DEBUG
-      LOG_PATTERN_CONSOLE: "[%level] %logger{36} - %msg%n"
-      LOG_PATTERN_FILE: "%d{yyyy-MM-dd HH:mm:ss} [%level] [%thread] %logger{36} - %msg%n"
+      LOG_PATTERN_CONSOLE: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+      LOG_PATTERN_FILE: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
     depends_on:
       - postgres
 
-######## gpts-clients-service ########
+######## gpts-limit-fee-service ########
   gpts-limit-fee-service:
     image: ghcr.io/nagenaev/gpts-limit-fee-service:latest
     container_name: gpts-limit-fee-service
@@ -637,9 +671,10 @@ services:
       LIMIT_FEE_MAX_COMMISSION: 1500
       # Logging Configuration
       LOGGING_LEVEL_ROOT: INFO
-      LOGGING_LEVEL_COM_GPTS: DEBUG
-      LOGGING_LEVEL_ORG_HIBERNATE: WARN
+      LOGGING_LEVEL_COM_GPTS: INFO
+      LOG_LEVEL_HIBERNATE: WARN
       LOGGING_LEVEL_HIKARI: INFO
+      LOG_LEVEL_SPRING_GRPC: INFO
     depends_on:
       - postgres
       - redis
@@ -788,6 +823,11 @@ services:
       timeout: 5s
       retries: 5
 
+  ########pushgateway:
+  ########  image: prom/pushgateway:latest
+  ########  ports:
+  ########    - "9096:9091"
+
   grafana:
     image: grafana/grafana:latest
     ports:
@@ -896,6 +936,11 @@ services:
       timeout: 10s
       retries: 5
       start_period: 10s
+
+#  zipkin:
+#    image: openzipkin/zipkin:latest
+#    ports:
+#      - "9411:9411"
 
 ######## volumes ########
 volumes:
