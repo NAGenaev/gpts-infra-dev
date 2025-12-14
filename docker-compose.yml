@@ -722,11 +722,14 @@ services:
       - "5432:5432"
     volumes:
       - ./init-scripts:/docker-entrypoint-initdb.d
-      #- ./custom-postgres.conf:/etc/postgresql/postgresql.conf
-      #- ./pg_hba.conf:/etc/postgresql/pg_hba.conf
+      - ./postgres-config/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./postgres-config/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
       - ./postgres-data:/var/lib/postgresql/data
-
-    #command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf", "-c", "hba_file=/etc/postgresql/pg_hba.conf"]
+    command: >
+      postgres 
+      -c config_file=/etc/postgresql/postgresql.conf
+      -c listen_addresses='*'
+      -c hba_file=/etc/postgresql/pg_hba.conf
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U gpts -d gpts"]
       interval: 10s
@@ -757,7 +760,7 @@ services:
 
 ######## KAFKA ########
   zookeeper:
-    image: bitnami/zookeeper:3.8
+    image: zookeeper:3.9.2
     ports:
       - "2181:2181"
     environment:
@@ -768,33 +771,49 @@ services:
       timeout: 5s
       retries: 5
 
-  kafka:
-    image: bitnami/kafka:3.5
+  kafka:  
+    image: confluentinc/cp-kafka:7.5.0
+    hostname: kafka
     ports:
-      - "9092:9092"  # внешний (для приложений на 192.168.0.145)
-      - "9095:9095"  # внутренний (для сервисов в docker-сети)
+      - "9092:9092"
+      - "9095:9095"
     depends_on:
-      - zookeeper
+      zookeeper:
+        condition: service_healthy  # Ждём готовности Zookeeper
     environment:
-      KAFKA_CFG_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "EXTERNAL:PLAINTEXT,INTERNAL:PLAINTEXT"
-      KAFKA_CFG_LISTENERS: "EXTERNAL://:9092,INTERNAL://:9095"
-      KAFKA_CFG_ADVERTISED_LISTENERS: "EXTERNAL://192.168.0.145:9092,INTERNAL://kafka:9095"
-      KAFKA_CFG_INTER_BROKER_LISTENER_NAME: INTERNAL
-      KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: true
+      # Режим и подключение
+      KAFKA_MODE: "zookeeper"
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+
+      # Слушатели
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "EXTERNAL:PLAINTEXT,INTERNAL:PLAINTEXT"
+      KAFKA_LISTENERS: "EXTERNAL://0.0.0.0:9092,INTERNAL://0.0.0.0:9095"
+      KAFKA_ADVERTISED_LISTENERS: "EXTERNAL://kafka:9092,INTERNAL://kafka:9095"
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+
+      # Основные настройки
       KAFKA_BROKER_ID: 1
-      KAFKA_CFG_NUM_PARTITIONS: 10
-      KAFKA_CFG_REPLICATION_FACTOR: 1
-      KAFKA_CFG_LOG_RETENTION_HOURS: 1
-      # Добавленные параметры для поддержки транзакций
-      KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR: 1
-      KAFKA_CFG_TRANSACTIONAL_ID_EXPIRATION_MS: 86400000  # 24 часа
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_DIRS: "/var/lib/kafka/data"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+      # Производительность
+      KAFKA_NUM_PARTITIONS: 10
+      KAFKA_NUM_NETWORK_THREADS: 3
+      KAFKA_NUM_IO_THREADS: 8
+      KAFKA_SOCKET_SEND_BUFFER_BYTES: 102400
+      KAFKA_SOCKET_RECEIVE_BUFFER_BYTES: 102400
+      KAFKA_SOCKET_REQUEST_MAX_BYTES: 104857600
+    #volumes:
+    #  - "./kafka_data:/var/lib/kafka/data"
     healthcheck:
-      test: ["CMD", "kafka-topics.sh", "--bootstrap-server", "kafka:9095", "--list"]
-      interval: 10s
+      test: ["CMD", "bash", "-c", "kafka-broker-api-versions.sh --bootstrap-server localhost:9092"]
+      interval: 30s
       timeout: 10s
-      retries: 5
+      retries: 3
+      start_period: 90s
 
 ######## KAFKA-UI ########
   kafka-ui:
