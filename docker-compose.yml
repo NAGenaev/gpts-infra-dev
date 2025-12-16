@@ -28,8 +28,14 @@ services:
       - PUSH_SERVICE_NAME=pushgateway
       - PUSH_SERVICE_PORT=9091
     depends_on:
-      - gpts-client-dash
-      - gpts-clients-service
+      gpts-client-dash:
+        condition: service_started
+      gpts-clients-service:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     
 ######## Scheme
@@ -73,7 +79,8 @@ services:
       - LOGGING_LEVEL_HIKARI_CONFIG=${LOGGING_LEVEL_HIKARI_CONFIG:-INFO}
       - LOGGING_PATTERN_CONSOLE=${LOGGING_PATTERN_CONSOLE:-"%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"}
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
 ######## gpts-transfer-orchestrator ########
   gpts-transfer-orchestrator:
@@ -83,8 +90,6 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
-    depends_on:
-      - postgres
     ports:
       - "8083:8083"
     environment:
@@ -122,7 +127,11 @@ services:
       FRAUD_PORT: 9093
       OPERATIONS_HOST: gpts-transfer-operation
       OPERATIONS_PORT: 9090
-
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
 ######## gpts-client-dash ########
   gpts-client-dash:
     image: ghcr.io/nagenaev/gpts-client-dash:latest
@@ -133,8 +142,6 @@ services:
     ports:
       - "8090:8090"
     restart: unless-stopped
-    depends_on:
-      - postgres
     environment:
       # Spring/Server
       SERVER_PORT: 8090
@@ -231,7 +238,11 @@ services:
       LOG_LEVEL_KAFKA_CONSUMER: WARN
       LOG_LEVEL_KAFKA_PRODUCER: WARN
       LOG_PATTERN: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%level] [%thread] %logger{36} - %msg%n"
-
+    depends_on:
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
 ######## gpts-transfer-history ########
   gpts-transfer-history:
     image: ghcr.io/nagenaev/gpts-transfer-history:latest
@@ -258,8 +269,10 @@ services:
       LOGGING_LEVEL_ROOT: INFO
       LOGGING_LEVEL_COM_GPTS: DEBUG
     depends_on:
-      - postgres
-      - kafka
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
 
 ######## gpts-sanctions ########
   gpts-sanctions:
@@ -316,7 +329,8 @@ services:
       GPTS_SANCTIONS_ENABLE_HIKARI_LOGGER: true
       GPTS_SANCTIONS_MIN_ACCOUNT_ID: 100000
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
 ######## gpts-transfer-operation ########
   gpts-transfer-operation:
@@ -369,8 +383,10 @@ services:
       LOG_LEVEL_KAFKA_PRODUCER: WARN
       LOG_PATTERN_CONSOLE: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
     depends_on:
-      - postgres
-      - kafka
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
 
 ######## gpts-fraud-service: ########
   gpts-fraud-service:
@@ -438,8 +454,10 @@ services:
       # Management endpoints
       MANAGEMENT_ENDPOINTS_INCLUDE: health,metrics,prometheus
     depends_on:
-      - postgres
-      - kafka
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
 ######## gpts-unit-open ########
@@ -486,8 +504,10 @@ services:
       LOG_LEVEL_KAFKA_CONSUMER: WARN
       LOG_LEVEL_KAFKA_PRODUCER: WARN
     depends_on:
-      - postgres
-      - kafka
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
 ######## gpts-unit-close ########
@@ -524,8 +544,10 @@ services:
       # Server configuration
       SERVER_PORT: 8097
     depends_on:
-      - postgres
-      - kafka
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
 
 ######## gpts-account-pool-generator ########
@@ -562,6 +584,9 @@ services:
       LOGGING_LEVEL_HIKARI: WARN
       LOGGING_LEVEL_SPRING_WEB: INFO
       LOGGING_LEVEL_SPRING_BOOT: INFO
+    depends_on:
+      postgres:
+        condition: service_healthy      
     restart: unless-stopped
 
     ######## gpts-clients-service ########
@@ -624,7 +649,8 @@ services:
       LOG_PATTERN_CONSOLE: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
       LOG_PATTERN_FILE: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
 
 ######## gpts-limit-fee-service ########
   gpts-limit-fee-service:
@@ -676,8 +702,10 @@ services:
       LOGGING_LEVEL_HIKARI: INFO
       LOG_LEVEL_SPRING_GRPC: INFO
     depends_on:
-      - postgres
-      - redis
+      kafka:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     
 ######## gpts-transfer-resolver ########
@@ -700,9 +728,12 @@ services:
       LOGGING_LEVEL_COM_GPTS_GPTS_TRANSFER_RESOLVER: DEBUG
       LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB_CLIENT_RESTTEMPLATE: DEBUG
     depends_on:
-      - gpts-clients-service
-      - gpts-unit-core
-      - gpts-transfer-orchestrator
+      gpts-clients-service:
+        condition: service_started
+      gpts-unit-core:
+        condition: service_started
+      gpts-transfer-orchestrator:
+        condition: service_started
     restart: unless-stopped
 
 #######################
