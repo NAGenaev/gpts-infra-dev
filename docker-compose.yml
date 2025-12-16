@@ -13,6 +13,11 @@ services:
   gpts-frontend:
     image: ghcr.io/nagenaev/gpts-frontend:latest
     container_name: gpts-frontend
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
     ports:
       - "80:80"
     environment:
@@ -43,6 +48,11 @@ services:
   gpts-product-sub-maintenance:
     image: ghcr.io/nagenaev/gpts-product-sub-maintenance:latest
     container_name: gpts-product-sub-maintenance
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
     environment:
       # Server Configuration
       - SERVER_PORT=${SERVER_PORT:-8083}
@@ -86,6 +96,14 @@ services:
   gpts-transfer-orchestrator:
     image: ghcr.io/nagenaev/gpts-transfer-orchestrator:latest
     container_name: gpts-transfer-orchestrator
+    deploy:
+      resources:
+        limits:
+          memory: 2024M
+          cpus: '2'
+        reservations:
+          memory: 2024M
+          cpus: '2'
     build:
       context: .
       dockerfile: Dockerfile
@@ -136,6 +154,11 @@ services:
   gpts-client-dash:
     image: ghcr.io/nagenaev/gpts-client-dash:latest
     container_name: gpts-client-dash
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
     build:
       context: .
       dockerfile: Dockerfile
@@ -175,6 +198,14 @@ services:
   gpts-unit-core:
     image: ghcr.io/nagenaev/gpts-unit-core:latest
     container_name: gpts-unit-core
+    deploy:
+      resources:
+        limits:
+          memory: 812M
+          cpus: '0.5'
+        reservations:
+          memory: 812M
+          cpus: '0.5'
     build:
       context: .
       dockerfile: Dockerfile
@@ -247,6 +278,11 @@ services:
   gpts-transfer-history:
     image: ghcr.io/nagenaev/gpts-transfer-history:latest
     container_name: gpts-transfer-history
+    deploy:
+      resources:
+        limits:
+          memory: 812M
+          cpus: '0.5'
     restart: unless-stopped
     ports:
       - "8098:8098"
@@ -278,6 +314,11 @@ services:
   gpts-sanctions:
     image: ghcr.io/nagenaev/gpts-sanctions:latest
     container_name: gpts-sanctions
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
     restart: unless-stopped
     ports:
       - "8099:8099"  # REST API port
@@ -336,6 +377,14 @@ services:
   gpts-transfer-operation:
     image: ghcr.io/nagenaev/gpts-transfer-operation:latest
     container_name: gpts-transfer-operation
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+          cpus: '1'
+        reservations:
+          memory: 1024M
+          cpus: '1'
     restart: unless-stopped
     ports:
       - "8089:8089"
@@ -392,6 +441,11 @@ services:
   gpts-fraud-service:
     image: ghcr.io/nagenaev/gpts-fraud-service:latest
     container_name: gpts-fraud-service
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+          cpus: '1'
     ports:
       - "8084:8084"  # HTTP port
       - "9093:9093"  # gRPC port
@@ -420,22 +474,36 @@ services:
       HIKARI_IDLE_TIMEOUT: 30000
       HIKARI_MAX_LIFETIME: 1800000
       HIKARI_CONNECTION_TIMEOUT: 30000
-      # Fraud detection configuration
-      FRAUD_VELOCITY_MAX_TX_PER_HOUR: 20
-      FRAUD_VELOCITY_MAX_AMOUNT_PER_HOUR: 2000000.00
-      FRAUD_VELOCITY_SCORE: 30
-      FRAUD_VELOCITY_MAX_TX_PER_HALF_HOUR: 10
-      FRAUD_VELOCITY_HALF_HOUR_SCORE: 50
-      FRAUD_LARGE_AMOUNT_THRESHOLD: 500000.00
-      FRAUD_LARGE_AMOUNT_SCORE: 15
-      FRAUD_NEW_RECIPIENT_SCORE: 20
-      FRAUD_NEW_RECIPIENT_MIN_RECIPIENTS: 5
-      FRAUD_NEW_RECIPIENT_MAX_TX_FOR_NEW_USER: 10
-      FRAUD_NEW_RECIPIENT_NEW_USER_PERIOD_DAYS: 7
+      # Fraud detection configuration for PROD-ENVS
+      #####FRAUD_VELOCITY_MAX_TX_PER_HOUR: 20
+      #####FRAUD_VELOCITY_MAX_AMOUNT_PER_HOUR: 2000000.00
+      #####FRAUD_VELOCITY_SCORE: 30
+      #####FRAUD_VELOCITY_MAX_TX_PER_HALF_HOUR: 10
+      #####FRAUD_VELOCITY_HALF_HOUR_SCORE: 50
+      #####FRAUD_LARGE_AMOUNT_THRESHOLD: 500000.00
+      #####FRAUD_LARGE_AMOUNT_SCORE: 15
+      #####FRAUD_NEW_RECIPIENT_SCORE: 20
+      #####FRAUD_NEW_RECIPIENT_MIN_RECIPIENTS: 5
+      #####FRAUD_NEW_RECIPIENT_MAX_TX_FOR_NEW_USER: 10
+      #####FRAUD_NEW_RECIPIENT_NEW_USER_PERIOD_DAYS: 7
       # Fraud thresholds
-      FRAUD_THRESHOLD_APPROVED: 25
-      FRAUD_THRESHOLD_REVIEW: 60
-      FRAUD_THRESHOLD_REJECTED: 85
+      #####FRAUD_THRESHOLD_APPROVED: 25
+      #####FRAUD_THRESHOLD_REVIEW: 60
+      #####FRAUD_THRESHOLD_REJECTED: 85
+      # Fraud detection configuration for NT-ENVS
+      FRAUD_VELOCITY_MAX_TX_PER_HOUR: 10000
+      FRAUD_VELOCITY_MAX_AMOUNT_PER_HOUR: 1000000000.00
+      FRAUD_VELOCITY_MAX_TX_PER_HALF_HOUR: 5000
+      FRAUD_LARGE_AMOUNT_THRESHOLD: 10000000.00
+      FRAUD_VELOCITY_SCORE: 1
+      FRAUD_LARGE_AMOUNT_SCORE: 1
+      FRAUD_NEW_RECIPIENT_SCORE: 1
+      FRAUD_NEW_RECIPIENT_MIN_RECIPIENTS: 10000
+      FRAUD_NEW_RECIPIENT_MAX_TX_FOR_NEW_USER: 10000
+      FRAUD_THRESHOLD_APPROVED: 899
+      FRAUD_THRESHOLD_REJECTED: 1000  # Практически никогда не отклоняем
+      FRAUD_THRESHOLD_REVIEW: 900 # Практически никогда не отклоняем
+      FRAUD_NEW_RECIPIENT_NEW_USER_PERIOD_DAYS: 30
       # Idempotency configuration
       FRAUD_IDEMPOTENCY_TTL_DAYS: 7
       FRAUD_IDEMPOTENCY_VELOCITY_TTL_HOURS: 1
@@ -464,6 +532,11 @@ services:
   gpts-unit-open:
     image: ghcr.io/nagenaev/gpts-unit-open:latest
     container_name: gpts-unit-open
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
     build: .
     ports:
       - "8088:8088"
@@ -514,6 +587,11 @@ services:
   gpts-unit-close:
     image: ghcr.io/nagenaev/gpts-unit-close:latest
     container_name: gpts-unit-close
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
     ports:
       - "8097:8097"
     environment:
@@ -554,6 +632,11 @@ services:
   gpts-account-pool-generator:
     image: ghcr.io/nagenaev/gpts-account-pool-generator:latest
     container_name: gpts-account-pool-generator
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
     ports:
       - "8480:8480"
     environment:
@@ -597,11 +680,8 @@ services:
     deploy:
       resources:
         limits:
-          memory: 512M
+          memory: 812M
           cpus: '0.5'
-        reservations:
-          memory: 512M
-          cpus: '0.2'
     restart: unless-stopped
     ports:
       - "8080:8080"
@@ -656,6 +736,11 @@ services:
   gpts-limit-fee-service:
     image: ghcr.io/nagenaev/gpts-limit-fee-service:latest
     container_name: gpts-limit-fee-service
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+          cpus: '1'
     ports:
       - "8085:8085"
       - "9097:9097"
@@ -712,6 +797,11 @@ services:
   gpts-transfer-resolver:
     image: ghcr.io/nagenaev/gpts-transfer-resolver:latest
     container_name: gpts-transfer-resolver
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
     ports:
       - "8481:8481"
     environment:
@@ -745,6 +835,14 @@ services:
 ######## POSTGRES ########
   postgres:
     image: postgres:15
+    deploy:
+      resources:
+        limits:
+          memory: 3G
+          cpus: '2'
+        reservations:
+          memory: 3G
+          cpus: '2'
     environment:
       POSTGRES_USER: gpts
       POSTGRES_PASSWORD: gpts
@@ -771,6 +869,11 @@ services:
 ######## REDIS ########
   redis:
     image: redis:7.2
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'    # 0.5 ядра
+          memory: 512M   # 512 МБ
     ports:
       - "6379:6379"
     healthcheck:
@@ -781,6 +884,11 @@ services:
 
   redis_exporter:
     image: oliver006/redis_exporter:latest
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 254M
     ports:
       - "9121:9121"
     environment:
@@ -792,6 +900,11 @@ services:
 ######## KAFKA ########
   zookeeper:
     image: zookeeper:3.9.2
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 254M
     ports:
       - "2181:2181"
     environment:
@@ -804,6 +917,11 @@ services:
 
   kafka:  
     image: confluentinc/cp-kafka:7.5.0
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 2G
     hostname: kafka
     ports:
       - "9092:9092"
@@ -840,7 +958,7 @@ services:
     #volumes:
     #  - "./kafka_data:/var/lib/kafka/data"
     healthcheck:
-      test: ["CMD", "bash", "-c", "kafka-broker-api-versions.sh --bootstrap-server localhost:9092"]
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -849,6 +967,11 @@ services:
 ######## KAFKA-UI ########
   kafka-ui:
     image: provectuslabs/kafka-ui
+    deploy:
+      resources:
+        limits:
+          cpus: '0.2'
+          memory: 512M
     environment:
       KAFKA_CLUSTERS_0_NAME: my-cluster
       KAFKA_CLUSTERS_0_BOOTSTRAP_SERVERS: kafka:9095  # адрес kafka
@@ -863,6 +986,11 @@ services:
 ######## MONITORING ########
   prometheus:
     image: prom/prometheus:latest
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 512M
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     ports:
@@ -873,13 +1001,13 @@ services:
       timeout: 5s
       retries: 5
 
-  ########pushgateway:
-  ########  image: prom/pushgateway:latest
-  ########  ports:
-  ########    - "9096:9091"
-
   grafana:
     image: grafana/grafana:latest
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 512M
     ports:
       - "3000:3000"
     depends_on:
@@ -898,6 +1026,11 @@ services:
   cadvisor:
     restart: always
     image: gcr.io/cadvisor/cadvisor
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 512M
     container_name: cadvisor
     privileged: true
     ports:
@@ -916,6 +1049,11 @@ services:
   kafka-exporter:
     restart: always
     image: danielqsj/kafka-exporter
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 512M
     ports:
       - "9308:9308"
     environment:
@@ -932,6 +1070,11 @@ services:
   postgres-exporter:
     restart: always
     image: prometheuscommunity/postgres-exporter
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 512M
     ports:
       - "9187:9187"
     environment:
@@ -946,6 +1089,11 @@ services:
 
   loki:
     image: grafana/loki:2.9.0
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 512M
     container_name: loki
     #user: "65534"  # Пользователь nobody, от которого работает Loki //FOR PROD
     user: root      # //FOR DEV
@@ -968,6 +1116,11 @@ services:
 
   grafana-agent:
     image: grafana/agent:v0.36.1  # Используем существующий тег
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 512M
     container_name: grafana-agent
     restart: unless-stopped
     depends_on:
@@ -987,17 +1140,11 @@ services:
       retries: 5
       start_period: 10s
 
-#  zipkin:
-#    image: openzipkin/zipkin:latest
-#    ports:
-#      - "9411:9411"
-
 ######## volumes ########
 volumes:
   postgres-data:
   grafana-data:
   
-
 ######## networks ########
 ###networks:
 ###  gpts-network:
